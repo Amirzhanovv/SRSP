@@ -1,8 +1,14 @@
+CREATE TABLE datacenters (
+                             datacenter_id SERIAL PRIMARY KEY,
+                             name VARCHAR(255) NOT NULL UNIQUE,
+                             location TEXT NOT NULL
+);
+
 CREATE TABLE servers (
                          server_id SERIAL PRIMARY KEY,
                          name VARCHAR(255) NOT NULL,
                          ip_address INET NOT NULL UNIQUE,
-                         datacenter_id INT,
+                         datacenter_id INT REFERENCES datacenters(datacenter_id) ON DELETE SET NULL,
                          status VARCHAR(50) NOT NULL,
                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -18,7 +24,7 @@ CREATE TABLE network_devices (
 
 CREATE TABLE server_status (
                                status_id SERIAL PRIMARY KEY,
-                               server_id INT REFERENCES servers(server_id),
+                               server_id INT REFERENCES servers(server_id) ON DELETE CASCADE,
                                cpu_usage FLOAT,
                                ram_usage FLOAT,
                                disk_usage FLOAT,
@@ -28,19 +34,11 @@ CREATE TABLE server_status (
 
 CREATE TABLE network_status (
                                 status_id SERIAL PRIMARY KEY,
-                                device_id INT REFERENCES network_devices(device_id),
+                                device_id INT REFERENCES network_devices(device_id) ON DELETE CASCADE,
                                 packet_loss FLOAT,
                                 latency INT,
                                 bandwidth_usage FLOAT,
                                 last_checked TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE users (
-                       user_id SERIAL PRIMARY KEY,
-                       username VARCHAR(100) NOT NULL UNIQUE,
-                       password_hash TEXT NOT NULL,
-                       role_id INT,
-                       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE roles (
@@ -48,22 +46,38 @@ CREATE TABLE roles (
                        role_name VARCHAR(50) NOT NULL UNIQUE
 );
 
+CREATE TABLE users (
+                       user_id SERIAL PRIMARY KEY,
+                       username VARCHAR(100) NOT NULL UNIQUE,
+                       password_hash TEXT NOT NULL,
+                       role_id INT REFERENCES roles(role_id) ON DELETE SET NULL,
+                       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE permissions (
                              permission_id SERIAL PRIMARY KEY,
                              permission_name VARCHAR(100) NOT NULL UNIQUE
 );
 
+CREATE TABLE audit_logs (
+                            audit_id SERIAL PRIMARY KEY,
+                            user_id INT REFERENCES users(user_id) ON DELETE SET NULL,
+                            action TEXT NOT NULL,
+                            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE logs (
                       log_id SERIAL PRIMARY KEY,
-                      server_id INT,
-                      device_id INT,
-                      user_id INT,
+                      server_id INT REFERENCES servers(server_id) ON DELETE SET NULL,
+                      device_id INT REFERENCES network_devices(device_id) ON DELETE SET NULL,
+                      user_id INT REFERENCES users(user_id) ON DELETE SET NULL,
                       action TEXT NOT NULL,
                       timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE alerts (
                         alert_id SERIAL PRIMARY KEY,
+                        log_id INT REFERENCES logs(log_id) ON DELETE CASCADE,
                         type VARCHAR(50) NOT NULL,
                         description TEXT NOT NULL,
                         severity VARCHAR(50) NOT NULL,
@@ -72,63 +86,46 @@ CREATE TABLE alerts (
 
 CREATE TABLE backups (
                          backup_id SERIAL PRIMARY KEY,
-                         server_id INT REFERENCES servers(server_id),
+                         server_id INT REFERENCES servers(server_id) ON DELETE CASCADE,
                          backup_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                          location TEXT NOT NULL
 );
 
-CREATE TABLE firewall_rules (
-                                rule_id SERIAL PRIMARY KEY,
-                                source_ip INET NOT NULL,
-                                destination_ip INET NOT NULL,
-                                action VARCHAR(50) NOT NULL,
-                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+
 
 CREATE TABLE vpn_sessions (
                               session_id SERIAL PRIMARY KEY,
-                              user_id INT REFERENCES users(user_id),
+                              user_id INT REFERENCES users(user_id) ON DELETE CASCADE,
                               start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                               end_time TIMESTAMP
 );
 
 CREATE TABLE network_traffic (
                                  traffic_id SERIAL PRIMARY KEY,
-                                 device_id INT REFERENCES network_devices(device_id),
+                                 device_id INT REFERENCES network_devices(device_id) ON DELETE CASCADE,
                                  bytes_sent BIGINT,
                                  bytes_received BIGINT,
                                  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE ip_addresses (
-                              ip_id SERIAL PRIMARY KEY,
-                              ip_address INET NOT NULL UNIQUE,
-                              assigned_to VARCHAR(100)
-);
 
 CREATE TABLE configurations (
                                 config_id SERIAL PRIMARY KEY,
-                                server_id INT REFERENCES servers(server_id),
+                                server_id INT REFERENCES servers(server_id) ON DELETE CASCADE,
                                 parameter VARCHAR(255) NOT NULL,
                                 value TEXT NOT NULL
 );
 
 CREATE TABLE patches (
                          patch_id SERIAL PRIMARY KEY,
-                         server_id INT REFERENCES servers(server_id),
+                         server_id INT REFERENCES servers(server_id) ON DELETE CASCADE,
                          description TEXT NOT NULL,
                          applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE datacenters (
-                             datacenter_id SERIAL PRIMARY KEY,
-                             name VARCHAR(255) NOT NULL UNIQUE,
-                             location TEXT NOT NULL
-);
-
 CREATE TABLE service_status (
                                 service_id SERIAL PRIMARY KEY,
-                                server_id INT REFERENCES servers(server_id),
+                                server_id INT REFERENCES servers(server_id) ON DELETE CASCADE,
                                 service_name VARCHAR(255) NOT NULL,
                                 status VARCHAR(50) NOT NULL,
                                 last_checked TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -136,15 +133,31 @@ CREATE TABLE service_status (
 
 CREATE TABLE incidents (
                            incident_id SERIAL PRIMARY KEY,
-                           server_id INT REFERENCES servers(server_id),
+                           server_id INT REFERENCES servers(server_id) ON DELETE CASCADE,
                            description TEXT NOT NULL,
                            severity VARCHAR(50) NOT NULL,
                            reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE audit_logs (
-                            audit_id SERIAL PRIMARY KEY,
-                            user_id INT REFERENCES users(user_id),
-                            action TEXT NOT NULL,
-                            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE ip_addresses (
+                              ip_id SERIAL PRIMARY KEY,
+                              ip_address INET NOT NULL UNIQUE,
+                              assigned_to_user INT REFERENCES users(user_id),
+                              assigned_to_device INT REFERENCES network_devices(device_id)
+);
+
+CREATE TABLE firewall_rules (
+                                rule_id SERIAL PRIMARY KEY,
+                                source_ip INET NOT NULL REFERENCES ip_addresses(ip_address),
+                                destination_ip INET NOT NULL REFERENCES ip_addresses(ip_address),
+                                action VARCHAR(50) NOT NULL,
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+CREATE TABLE role_permissions (
+                                  role_id INT REFERENCES roles(role_id),
+                                  permission_id INT REFERENCES permissions(permission_id),
+                                  PRIMARY KEY (role_id, permission_id)
 );
