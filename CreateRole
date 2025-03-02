@@ -1,13 +1,20 @@
+CREATE USER admin_user WITH PASSWORD 'A123';
+CREATE USER regular_user WITH PASSWORD 'R123';
+CREATE USER guest_user WITH PASSWORD 'G123';
+
+
+
 CREATE ROLE admin_role;
 CREATE ROLE user_role;
+CREATE ROLE guest_role;
 
-CREATE USER admin_user WITH PASSWORD 'secure_password';
+
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO admin_role;
+
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO user_role;
+
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO guest_role;
+
 GRANT admin_role TO admin_user;
-
-CREATE USER standard_user WITH PASSWORD 'user_password';
-GRANT user_role TO standard_user;
-
-GRANT ALL PRIVILEGES ON TABLE servers TO admin_role;
-GRANT ALL PRIVILEGES ON TABLE network_devices TO admin_role;
-GRANT SELECT ON TABLE servers TO user_role;
-GRANT SELECT ON TABLE network_devices TO user_role;
+GRANT user_role TO regular_user;
+GRANT guest_role TO guest_user;
