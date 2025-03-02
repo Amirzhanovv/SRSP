@@ -1,0 +1,60 @@
+SELECT s.server_id, s.name AS server_name, s.ip_address, d.name AS datacenter_name
+FROM servers s
+         LEFT JOIN datacenters d ON s.datacenter_id = d.datacenter_id;
+
+
+
+
+
+
+
+SELECT l.log_id, l.action, l.timestamp, u.username, r.role_name
+FROM logs l
+         JOIN users u ON l.user_id = u.user_id
+         JOIN roles r ON u.role_id = r.role_id
+ORDER BY l.timestamp DESC;
+
+
+
+
+
+
+
+
+SELECT r.role_name, COUNT(u.user_id) AS user_count
+FROM users u
+         JOIN roles r ON u.role_id = r.role_id
+GROUP BY r.role_name
+HAVING COUNT(u.user_id) > 2;
+
+
+
+
+
+EXPLAIN ANALYZE
+SELECT * FROM logs WHERE user_id = 3;
+CREATE INDEX idx_logs_user_id ON logs(user_id);
+
+
+
+
+
+
+
+SELECT
+    AVG(cpu_usage) AS avg_cpu,
+    AVG(ram_usage) AS avg_ram,
+    AVG(disk_usage) AS avg_disk
+FROM server_status;
+SELECT COUNT(*) AS total_logins FROM audit_logs;
+
+
+
+
+
+
+
+SELECT nd.name, ns.latency, ns.last_checked
+FROM network_status ns
+         JOIN network_devices nd ON ns.device_id = nd.device_id
+WHERE ns.latency > 100 AND ns.last_checked >= NOW() - INTERVAL '1 day';
