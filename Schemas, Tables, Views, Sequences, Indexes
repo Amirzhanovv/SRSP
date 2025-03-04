@@ -1,0 +1,104 @@
+-- 1. Жаңа схема құру
+CREATE SCHEMA airport_system;
+
+-- 2. Рөлдер мен пайдаланушылар құру
+CREATE ROLE airport_admin;
+CREATE USER airport_user IDENTIFIED BY password;
+GRANT CONNECT, RESOURCE TO airport_user;
+GRANT airport_admin TO airport_user;
+
+-- 3. Кестелер құру
+CREATE TABLE Airport (
+    AirportID NUMBER(10) PRIMARY KEY,
+    Name VARCHAR2(100) NOT NULL,
+    Location VARCHAR2(100) NOT NULL
+);
+
+CREATE TABLE Aircraft (
+    AircraftID NUMBER(10) PRIMARY KEY,
+    Model VARCHAR2(50) NOT NULL,
+    Capacity NUMBER(3) CHECK (Capacity > 0) NOT NULL
+);
+
+CREATE TABLE Flight (
+    FlightID NUMBER(10) PRIMARY KEY,
+    AircraftID NUMBER(10) REFERENCES Aircraft(AircraftID),
+    AirportID NUMBER(10) REFERENCES Airport(AirportID),
+    DepartureTime DATE NOT NULL,
+    ArrivalTime DATE NOT NULL,
+    CHECK (DepartureTime < ArrivalTime)
+);
+
+CREATE TABLE Passenger (
+    PassengerID NUMBER(10) PRIMARY KEY,
+    FullName VARCHAR2(100) NOT NULL,
+    PassportNumber VARCHAR2(15) UNIQUE NOT NULL
+);
+
+CREATE TABLE Ticket (
+    TicketID NUMBER(10) PRIMARY KEY,
+    FlightID NUMBER(10) REFERENCES Flight(FlightID),
+    PassengerID NUMBER(10) REFERENCES Passenger(PassengerID),
+    SeatNumber VARCHAR2(5) NOT NULL,
+    Price NUMBER(8,2) CHECK (Price > 0) NOT NULL
+);
+
+CREATE TABLE Staff (
+    StaffID NUMBER(10) PRIMARY KEY,
+    FullName VARCHAR2(100) NOT NULL,
+    Position VARCHAR2(50) NOT NULL,
+    FlightID NUMBER(10) REFERENCES Flight(FlightID),
+    CHECK (Position IN ('Pilot', 'Cabin Crew', 'Ground Staff'))
+);
+
+-- 4. Көріністер жасау
+CREATE VIEW Flights_Schedule AS
+SELECT FlightID, AirportID, DepartureTime, ArrivalTime 
+FROM Flight;
+
+-- 5. Үш кестеден көрініс құру
+CREATE VIEW Passenger_Tickets AS
+SELECT p.FullName, t.TicketID, f.FlightID, f.DepartureTime, f.ArrivalTime
+FROM Passenger p
+JOIN Ticket t ON p.PassengerID = t.PassengerID
+JOIN Flight f ON t.FlightID = f.FlightID;
+
+-- 6. Тек оқу құқығы бар пайдаланушыға көрініс рұқсат беру
+GRANT SELECT ON Passenger_Tickets TO airport_user;
+
+-- 7. Реттіліктер құру
+CREATE SEQUENCE seq_airport START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE seq_aircraft START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE seq_flight START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE seq_passenger START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE seq_ticket START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE seq_staff START WITH 1 INCREMENT BY 1;
+
+-- 8. INSERT операторы арқылы деректер қосу
+INSERT INTO Passenger (PassengerID, FullName, PassportNumber)
+VALUES (seq_passenger.NEXTVAL, 'John Doe', 'AB1234567');
+
+-- 9. CURRVAL қолдану
+SELECT seq_passenger.CURRVAL FROM dual;
+
+-- 10. CACHE және NOCACHE параметрлі реттілік
+CREATE SEQUENCE seq_cached START WITH 1 INCREMENT BY 1 CACHE 10;
+CREATE SEQUENCE seq_nocache START WITH 1 INCREMENT BY 1 NOCACHE;
+
+-- 11. ЖСН, UID генерациялау
+CREATE SEQUENCE seq_uid START WITH 100000000000 INCREMENT BY 1;
+
+-- 12. Индекстер қосу
+CREATE INDEX idx_flight_airport ON Flight(AirportID);
+CREATE INDEX idx_flight_aircraft ON Flight(AircraftID);
+CREATE INDEX idx_ticket_passenger ON Ticket(PassengerID);
+
+-- 13. Біріктірілген индекс құру
+CREATE INDEX idx_flight_composite ON Flight(AirportID, AircraftID);
+
+-- 14. Бірнеше кестеден деректерді біріктіру
+SELECT p.FullName, t.TicketID, f.FlightID, a.Name AS AirportName, f.DepartureTime 
+FROM Passenger p
+JOIN Ticket t ON p.PassengerID = t.PassengerID
+JOIN Flight f ON t.FlightID = f.FlightID
+JOIN Airport a ON f.AirportID = a.AirportID;
