@@ -1,13 +1,10 @@
--- 1. Жаңа схема құру
 CREATE SCHEMA airport_system;
 
--- 2. Рөлдер мен пайдаланушылар құру
 CREATE ROLE airport_admin;
 CREATE USER airport_user IDENTIFIED BY password;
 GRANT CONNECT, RESOURCE TO airport_user;
 GRANT airport_admin TO airport_user;
 
--- 3. Кестелер құру
 CREATE TABLE Airport (
     AirportID NUMBER(10) PRIMARY KEY,
     Name VARCHAR2(100) NOT NULL,
